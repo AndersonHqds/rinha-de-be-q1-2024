@@ -1,0 +1,23 @@
+{
+  "name": "andersonhqds",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "node --test ./rinha-test.js",
+    "start": "tsx ./src/index.ts",
+    "tsc": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^4.26.1",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}
