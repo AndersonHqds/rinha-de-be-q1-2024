@@ -1,37 +1,42 @@
 import Connection from "./connection";
-import pg from 'pg';
+import pg from "pg";
+import { PoolMonitor } from "./poolMonitor";
 
 export default class PgAdapter implements Connection {
-  connection: pg.Pool;
+  pool: pg.Pool;
+  // poolMonitor: PoolMonitor;
 
   constructor() {
-    this.connection = new pg.Pool({
-      user: process.env.DB_USERNAME || 'admin',
-      host: process.env.DB_HOSTNAME || 'localhost',
-      database: process.env.DB_NAME || 'rinha',
-      password: process.env.DB_PASSWORD || '123',
-      port: 5432
+    this.pool = new pg.Pool({
+      user: process.env.DB_USERNAME || "admin",
+      host: process.env.DB_HOSTNAME || "localhost",
+      database: process.env.DB_NAME || "rinha",
+      password: process.env.DB_PASSWORD || "123",
+      port: 5432,
+      max: 30,
+      idleTimeoutMillis: 0,
+      connectionTimeoutMillis: 60_000,
+      // keepAlive: true,
     });
-
-    this.connection.on('error', (err: any) => {
-      console.error('Database error', err);
-    });
-
-    this.connection.connect((err, client, release) => {
-      if (err) {
-          console.error('Erro ao obter cliente do pool', err);
-          return;
-      }
-      console.log('Conexão bem sucedida com o banco de dados');
-      release(); // Libera o cliente de volta para o pool
-  });
+    // this.poolMonitor = new PoolMonitor(this.pool);
   }
 
-  query(statement: string, params?: any): Promise<any> {
-    return this.connection.query(statement, params);
+  async connect(): Promise<
+    [
+      { query: (statement: string, params?: any) => Promise<any> },
+      close: () => void
+    ]
+  > {
+    const connection = await this.pool.connect();
+    // console.log(this.poolMonitor.getStatus());
+    const close = () => {
+      connection.release();
+      // console.log(this.poolMonitor.getStatus());
+    };
+    return [connection, close];
   }
+
   close(): Promise<void> {
-    return this.connection.end();
+    return this.pool.end();
   }
-  
 }

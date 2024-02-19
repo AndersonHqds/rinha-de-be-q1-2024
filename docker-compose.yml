@@ -24,8 +24,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.6"
-          memory: "200MB"
+          cpus: "0.5"
+          memory: "160MB"
 
   api02:
     # Essa sintaxe reusa o que foi declarado em 'api01'.
@@ -47,8 +47,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.17"
-          memory: "10MB"
+          cpus: "0.20"
+          memory: "50MB"
 
   db:
     image: postgres:16.2-alpine
@@ -61,6 +61,8 @@ services:
       - "5432:5432"
     volumes:
       - ./script.sql:/docker-entrypoint-initdb.d/script.sql
+      - ./postgres.conf:/docker-entrypoint-initdb.d/postgres.conf
+    command: postgres -c config_file=/docker-entrypoint-initdb.d/postgres.conf
     deploy:
       resources:
         limits:
@@ -68,8 +70,8 @@ services:
           # aqui declarados é de 1.5 unidades de CPU e 550MB
           # de memória. A distribuição feita aqui é apenas
           # um exemplo – distribua como quiser.
-          cpus: "0.13"
-          memory: "140MB"
+          cpus: "0.7"
+          memory: "300MB"
     healthcheck:
       test:
         [
@@ -78,7 +80,7 @@ services:
         ]
       timeout: 10s
       interval: 10s
-      retries: 3
+      retries: 10
 # O uso do modo `bridge` deve ser adequado à carga que será usada no teste.
 # A edição anterior se beneficiou do modo host pois o volume de requisições
 # era relativamente alto e a virtualização da rede se tornou um gargalo, mas

@@ -14,6 +14,9 @@ CREATE TABLE transactions (
   FOREIGN KEY (client_id) REFERENCES clients (id)
 );
 
+CREATE INDEX idx_transactions_client_id ON transactions (client_id);
+CREATE INDEX idx_transactions_client_id_created_at ON transactions(client_id, created_at);
+
 DO $$
 BEGIN
   INSERT INTO clients (money_limit, balance)

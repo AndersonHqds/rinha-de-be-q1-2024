@@ -3,9 +3,10 @@ import TransactionDbRepository from "./infra/repositories/transactiondb.reposito
 import PgAdapter from "./infra/database/pgAdapter";
 import Transaction from "./domain/transaction.vo";
 import OperationFactory from "./application/operation.factory";
-import ClientExistsUsecase from "./application/client-exists.usecase";
 import ExtractDbRepository from "./infra/repositories/extractdb.repository";
 import ExtractUsecase from "./application/extract.usecase";
+import { logger } from "./infra/logger/logger";
+import { transactionSchema } from "./infra/schemas/fastify";
 
 const fastify = Fastify({
   logger: false,
@@ -21,52 +22,51 @@ type ReqParams = {
   id: number;
 };
 
-export const start = () => {
+const existentClients = new Set<number>();
+
+const preloadClients = async (
+  transactionRepository: TransactionDbRepository
+) => {
+  const higherId = await transactionRepository.findHigherClientId();
+  for (let i = 1; i <= higherId; i++) {
+    existentClients.add(i);
+  }
+};
+
+export const start = async () => {
   try {
     const connection = new PgAdapter();
     const transactionRepository = new TransactionDbRepository(connection);
     const extractRepository = new ExtractDbRepository(connection);
-    const clientExistsUsecase = new ClientExistsUsecase(transactionRepository);
     const extractUsecase = new ExtractUsecase(extractRepository);
-
+    await preloadClients(transactionRepository);
     const offSetBrasilia = -3 * 60;
 
-    const isInputValid = async (id: number, reply: any) => {
-      if (isNaN(id)) {
-        reply.code(400).send({ error: "Invalid id" });
-        return false;
+    const isTheClientValid = (id: number, reply: any) => {
+      if (existentClients.has(id)) {
+        return true;
       }
-      const exists = await clientExistsUsecase.execute(id);
-      if (!exists) {
-        reply.code(404).send({ error: "Client not found" });
-        return false;
-      }
-      return true;
+      reply.code(404).send({ error: "Client not found" });
+      return false;
     };
 
     fastify.post<{ Body: PostBody; Params: ReqParams }>(
       "/clientes/:id/transacoes",
+      {
+        schema: transactionSchema,
+        config: {},
+      },
       async (request, reply) => {
-        const { tipo, valor } = request.body;
-        const isInputInvalid = !(await isInputValid(
-          request?.params?.id,
-          reply
-        ));
-        if (isInputInvalid) {
+        const { tipo, valor, descricao } = request.body;
+        if (!isTheClientValid(request?.params?.id, reply)) {
           return;
         }
-        let transaction = null;
-        try {
-          transaction = new Transaction(
-            request?.params?.id,
-            valor,
-            request?.body?.descricao,
-            tipo
-          );
-        } catch (e) {
-          console.log("Error in Transaction");
-          return reply.code(422).send({ error: (e as Error)?.message });
-        }
+        const transaction = new Transaction(
+          request?.params?.id,
+          valor,
+          descricao,
+          tipo
+        );
         const operation = OperationFactory.createOperation(
           tipo,
           transactionRepository
@@ -74,7 +74,6 @@ export const start = () => {
         const [result, err] = await operation?.execute(transaction);
 
         if (err) {
-          console.log("Error in operation");
           return reply.code(422).send(err);
         }
         return reply.code(200).send({
@@ -86,11 +85,28 @@ export const start = () => {
 
     fastify.get<{ Params: ReqParams }>(
       "/clientes/:id/extrato",
+      {
+        schema: {
+          params: {
+            type: "object",
+            properties: {
+              id: {
+                type: "integer",
+              },
+            },
+          },
+        },
+      },
       async (request, reply) => {
-        if (!isInputValid(request?.params?.id, reply)) {
+        if (!isTheClientValid(request?.params?.id, reply)) {
           return;
         }
         const extract = await extractUsecase.execute(request?.params?.id);
+
+        if (!extract) {
+          return reply.code(500).send({ error: "Error on extract usecase" });
+        }
+
         return reply.code(200).send({
           saldo: {
             total: extract?.balance || 0,
@@ -104,12 +120,18 @@ export const start = () => {
       }
     );
 
+    fastify.setErrorHandler((error, request, reply) => {
+      if (error.validation) {
+        reply.code(422).send({ error: "Invalid input" });
+      }
+    });
+
     fastify.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
       if (err) throw err;
-      console.log(`Server is running on ${address} 🚀`);
+      logger.info(`Server is running on ${address} 🚀`);
     });
   } catch (e) {
-    console.error(e);
+    logger.error(e);
   }
 };
 
