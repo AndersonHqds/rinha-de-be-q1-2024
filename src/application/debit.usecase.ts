@@ -1,11 +1,16 @@
-import Account from "../domain/account.vo";
+import Client from "../domain/client";
+import ClientRepository from "../domain/client.repository";
 import TransactionRepository from "../domain/transaction.repository";
 import Transaction from "../domain/transaction.vo";
 import { logger } from "../infra/logger/logger";
 
 export default class DebitUsecase {
-  constructor(private readonly transactionRepository: TransactionRepository) {
+  constructor(
+    private readonly transactionRepository: TransactionRepository,
+    private readonly clientRepository: ClientRepository
+  ) {
     this.transactionRepository = transactionRepository;
+    this.clientRepository = clientRepository;
   }
 
   async execute({
@@ -15,16 +20,31 @@ export default class DebitUsecase {
     type,
   }: Transaction): Promise<Output> {
     try {
-      const transaction = new Transaction(clientId, value, description, type);
-      const [client, err] = await this.transactionRepository.debit(transaction);
+      const clientResult = await this.clientRepository.findById(clientId);
+      if (!clientResult) {
+        return [null, new Error("Client not found")];
+      }
+      const client = clientResult[0];
+      const newBalance = client.balance - value;
+
+      if (Math.abs(newBalance) > client.limit) {
+        return [null, new Error("Limit exceeded")];
+      }
+      const transaction = new Transaction(
+        client.id,
+        client.balance,
+        description,
+        type
+      );
+      const err =
+        await this.transactionRepository.saveTransactionAndUpdateNewBalance(
+          transaction,
+          newBalance
+        );
       if (err) {
         return [null, err];
       }
-      if (!client) {
-        return [null, new Error("Limit exceeded")];
-      }
-      const account = new Account(clientId, client.balance, client.money_limit);
-      return [account, null];
+      return [new Client(clientId, newBalance, client.limit), null];
     } catch (e) {
       logger.error(e, "Error on debit usecase");
       return [null, e as Error];
@@ -32,4 +52,4 @@ export default class DebitUsecase {
   }
 }
 
-type Output = [Nullable<Account>, Nullable<Error>];
+type Output = [Nullable<Client>, Nullable<Error>];

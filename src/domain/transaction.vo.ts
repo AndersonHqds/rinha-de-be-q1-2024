@@ -3,11 +3,16 @@ export default class Transaction {
     readonly clientId: number,
     readonly value: number,
     readonly description: string,
-    readonly type: "c" | "d"
+    readonly type: TransactionType
   ) {
     this.value = value;
     this.description = description;
     this.type = type;
     this.clientId = clientId;
   }
+}
+
+export enum TransactionType {
+  CREDIT = "c",
+  DEBIT = "d",
 }

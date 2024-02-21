@@ -1,11 +1,16 @@
-import Account from "../domain/account.vo";
+import Client from "../domain/client";
+import ClientRepository from "../domain/client.repository";
 import TransactionRepository from "../domain/transaction.repository";
 import Transaction from "../domain/transaction.vo";
 import { logger } from "../infra/logger/logger";
 
 export default class CreditUsecase {
-  constructor(private readonly transactionRepository: TransactionRepository) {
+  constructor(
+    private readonly transactionRepository: TransactionRepository,
+    private readonly clientRepository: ClientRepository
+  ) {
     this.transactionRepository = transactionRepository;
+    this.clientRepository = clientRepository;
   }
 
   async execute({
@@ -15,19 +20,31 @@ export default class CreditUsecase {
     type,
   }: Transaction): Promise<Output> {
     try {
-      const transaction = new Transaction(clientId, value, description, type);
-      const [result, err] = await this.transactionRepository.credit(
-        transaction
+      const clientResult = await this.clientRepository.findById(clientId);
+      if (!clientResult) {
+        return [null, new Error("Client not found")];
+      }
+      const [client] = clientResult;
+
+      const newBalance = client.balance + value;
+
+      const transaction = new Transaction(
+        client.id,
+        client.balance,
+        description,
+        type
       );
+
+      const err =
+        await this.transactionRepository.saveTransactionAndUpdateNewBalance(
+          transaction,
+          newBalance
+        );
+
       if (err) {
         return [null, err];
       }
-      if (!result) {
-        return [null, new Error("Unknown Error on credit")];
-      }
-      const { balance, money_limit } = result;
-      const account = new Account(clientId, balance, money_limit);
-      return [account, null];
+      return [new Client(client.id, newBalance, client.limit), null];
     } catch (e) {
       logger.error(e, "Error on credit usecase");
       return [null, e as Error];
@@ -35,4 +52,4 @@ export default class CreditUsecase {
   }
 }
 
-type Output = [Nullable<Account>, Nullable<Error>];
+type Output = [Nullable<Client>, Nullable<Error>];

@@ -27,7 +27,8 @@ export default class ExtractDbRepository implements ExtractRepository {
         FROM clients c
         LEFT JOIN transactions t ON t.client_id = c.id
         WHERE c.id = $1
-        GROUP BY c.id, c.balance, c.money_limit;
+        GROUP BY c.id, c.balance, c.money_limit
+        LIMIT 10;
         `,
         [clientId]
       );

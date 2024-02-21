@@ -1,5 +1,4 @@
 import ExtractRepository from "../domain/extract.repository";
-import { logger } from "../infra/logger/logger";
 
 export default class ExtractUsecase {
   constructor(readonly extractRepository: ExtractRepository) {

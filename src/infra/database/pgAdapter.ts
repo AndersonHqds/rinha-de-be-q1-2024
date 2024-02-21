@@ -14,7 +14,7 @@ export default class PgAdapter implements Connection {
       password: process.env.DB_PASSWORD || "123",
       port: 5432,
       max: 30,
-      idleTimeoutMillis: 0,
+      // idleTimeoutMillis: 0,
       connectionTimeoutMillis: 60_000,
       // keepAlive: true,
     });

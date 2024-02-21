@@ -1,12 +1,12 @@
-import TransactionRepository from "../domain/transaction.repository";
+import ClientRepository from "../domain/client.repository";
 import { logger } from "../infra/logger/logger";
 
 export default class ClientExistsUsecase {
-  constructor(private transactionRepository: TransactionRepository) {}
+  constructor(private clientRepository: ClientRepository) {}
 
   async execute(clientId: number): Promise<boolean> {
     try {
-      const client = await this.transactionRepository.isClientExists(clientId);
+      const client = await this.clientRepository.isClientExists(clientId);
       return client;
     } catch (e) {
       logger.error(e, "Error on client exists usecase");

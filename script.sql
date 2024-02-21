@@ -1,10 +1,10 @@
-CREATE TABLE clients ( 
+CREATE UNLOGGED TABLE clients ( 
   id SERIAL PRIMARY KEY, 
   money_limit INTEGER NOT NULL, 
   balance INTEGER NOT NULL
 );
 
-CREATE TABLE transactions (
+CREATE UNLOGGED TABLE transactions (
   id SERIAL PRIMARY KEY,
   client_id INTEGER NOT NULL,
   amount INTEGER NOT NULL,
@@ -16,6 +16,8 @@ CREATE TABLE transactions (
 
 CREATE INDEX idx_transactions_client_id ON transactions (client_id);
 CREATE INDEX idx_transactions_client_id_created_at ON transactions(client_id, created_at);
+CREATE INDEX idx_clients_balance ON clients(balance);
+CREATE INDEX idx_clients_money_limit ON clients(money_limit);
 
 DO $$
 BEGIN
