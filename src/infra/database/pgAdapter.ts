@@ -8,8 +8,8 @@ export default class PgAdapter implements Connection {
 
   constructor() {
     this.pool = new pg.Pool({
-      user: process.env.DB_USERNAME || "admin",
-      host: process.env.DB_HOSTNAME || "localhost",
+      user: process.env.DB_USER || "admin",
+      host: process.env.DB_HOSTNAME || "db",
       database: process.env.DB_NAME || "rinha",
       password: process.env.DB_PASSWORD || "123",
       port: 5432,

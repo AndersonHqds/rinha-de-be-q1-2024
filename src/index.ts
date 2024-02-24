@@ -137,3 +137,8 @@ export const start = async () => {
 };
 
 start();
+
+// fastify.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
+//   if (err) throw err;
+//   logger.info(`Server is running on ${address} 🚀 - v1`);
+// });

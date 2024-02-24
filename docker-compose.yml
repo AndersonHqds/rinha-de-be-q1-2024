@@ -18,14 +18,16 @@ services:
     # ao banco de dados na fase de desenvolvimento.
     ports:
       - "8081:3000"
-    depends_on:
-      db:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
     deploy:
       resources:
         limits:
           cpus: "0.5"
           memory: "160MB"
+    restart: on-failure
+    # command: ./wait-for-it.sh db:5432 --strict --timeout=300 -- npm start
 
   api02:
     # Essa sintaxe reusa o que foi declarado em 'api01'.
@@ -44,11 +46,11 @@ services:
     ports:
       # Obrigatório expor/usar a porta 9999 no load balancer!
       - "9999:9999"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.20"
-          memory: "50MB"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.20"
+    #       memory: "50MB"
 
   db:
     image: postgres:16.2-alpine
@@ -63,20 +65,20 @@ services:
       - ./script.sql:/docker-entrypoint-initdb.d/script.sql
       - ./postgres.conf:/docker-entrypoint-initdb.d/postgres.conf
     command: postgres -c config_file=/docker-entrypoint-initdb.d/postgres.conf
-    deploy:
-      resources:
-        limits:
-          # Note que a soma de todos os limites dos serviços
-          # aqui declarados é de 1.5 unidades de CPU e 550MB
-          # de memória. A distribuição feita aqui é apenas
-          # um exemplo – distribua como quiser.
-          cpus: "0.7"
-          memory: "300MB"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       # Note que a soma de todos os limites dos serviços
+    #       # aqui declarados é de 1.5 unidades de CPU e 550MB
+    #       # de memória. A distribuição feita aqui é apenas
+    #       # um exemplo – distribua como quiser.
+    #       cpus: "0.7"
+    #       memory: "300MB"
     healthcheck:
       test:
         [
-          "CMD-SHELL",
-          "PGUSER=admin PGPASSWORD=123 PGDATABASE=rinha pg_isready -h localhost -p 5432 -q -t 3",
+          "CMD",
+          "pg_isready -U admin",
         ]
       timeout: 10s
       interval: 10s
