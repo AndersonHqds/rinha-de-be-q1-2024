@@ -20,31 +20,15 @@ export default class DebitUsecase {
     type,
   }: Transaction): Promise<Output> {
     try {
-      const clientResult = await this.clientRepository.findById(clientId);
-      if (!clientResult) {
-        return [null, new Error("Client not found")];
-      }
-      const client = clientResult[0];
-      const newBalance = client.balance - value;
-
-      if (Math.abs(newBalance) > client.limit) {
+      const transaction = new Transaction(clientId, value, description, type);
+      const [client, err] = await this.transactionRepository.debit(transaction);
+      if (!client) {
         return [null, new Error("Limit exceeded")];
       }
-      const transaction = new Transaction(
-        client.id,
-        client.balance,
-        description,
-        type
-      );
-      const err =
-        await this.transactionRepository.saveTransactionAndUpdateNewBalance(
-          transaction,
-          newBalance
-        );
       if (err) {
         return [null, err];
       }
-      return [new Client(clientId, newBalance, client.limit), null];
+      return [new Client(clientId, client.balance, client.money_limit), null];
     } catch (e) {
       logger.error(e, "Error on debit usecase");
       return [null, e as Error];

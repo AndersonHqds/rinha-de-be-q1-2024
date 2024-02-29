@@ -12,7 +12,7 @@ export default class ClientDbRepository implements ClientRepository {
     const [connection, release] = await this.pool.connect();
     try {
       const result = await connection.query(
-        `SELECT * FROM clients WHERE id = $1 LIMIT 1;`,
+        `SELECT balance, id, money_limit FROM clients  WHERE id = $1 LIMIT 1;`,
         [id]
       );
       const client = result.rows[0];

@@ -1,13 +1,13 @@
-POST http://localhost:3000/clientes/1/transacoes HTTP/1.1
+POST http://[::1]:3000/clientes/1/transacoes HTTP/1.1
 Content-Type: application/json
 
 {
-  "valor": 1565,
-  "tipo": "d",
+  "valor": 1,
+  "tipo": "c",
   "descricao": "kVO4lFggTM"
 }
 
 ###
 
-GET http://localhost:9999/clientes/5/extrato HTTP/1.1
+GET http://[::1]:9999/clientes/5/extrato HTTP/1.1
 Content-Type: application/json

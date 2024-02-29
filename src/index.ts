@@ -47,7 +47,10 @@ export const start = async () => {
     const transactionRepository = new TransactionDbRepository(connection);
     const clientRepository = new ClientDbRepository(connection);
     const extractRepository = new ExtractDbRepository(connection);
-    const extractUsecase = new ExtractUsecase(extractRepository);
+    const extractUsecase = new ExtractUsecase(
+      extractRepository,
+      clientRepository
+    );
     await preloadClients(clientRepository);
     const offSetBrasilia = -3 * 60;
 

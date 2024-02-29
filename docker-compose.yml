@@ -18,15 +18,15 @@ services:
     # ao banco de dados na fase de desenvolvimento.
     ports:
       - "8081:3000"
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: "160MB"
-    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.5"
+    #       memory: "160MB"
+    # restart: on-failure
     # command: ./wait-for-it.sh db:5432 --strict --timeout=300 -- npm start
 
   api02:
@@ -55,6 +55,7 @@ services:
   db:
     image: postgres:16.2-alpine
     hostname: db
+    command: 'postgres -c max_connections=1000 -c shared_buffers=128MB -c synchronous_commit=off -c fsync=off -c full_page_writes=off'
     environment:
       - POSTGRES_PASSWORD=123
       - POSTGRES_USER=admin
@@ -63,8 +64,8 @@ services:
       - "5432:5432"
     volumes:
       - ./script.sql:/docker-entrypoint-initdb.d/script.sql
-      - ./postgres.conf:/docker-entrypoint-initdb.d/postgres.conf
-    command: postgres -c config_file=/docker-entrypoint-initdb.d/postgres.conf
+      # - ./postgres.conf:/docker-entrypoint-initdb.d/postgres.conf
+    # command: postgres -c config_file=/docker-entrypoint-initdb.d/postgres.conf
     # deploy:
     #   resources:
     #     limits:
@@ -77,12 +78,21 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "pg_isready -U admin",
+          "CMD-SHELL",
+          "pg_isready",
         ]
       timeout: 10s
       interval: 10s
       retries: 10
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
 # O uso do modo `bridge` deve ser adequado à carga que será usada no teste.
 # A edição anterior se beneficiou do modo host pois o volume de requisições
 # era relativamente alto e a virtualização da rede se tornou um gargalo, mas

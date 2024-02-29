@@ -20,31 +20,20 @@ export default class CreditUsecase {
     type,
   }: Transaction): Promise<Output> {
     try {
-      const clientResult = await this.clientRepository.findById(clientId);
-      if (!clientResult) {
-        return [null, new Error("Client not found")];
-      }
-      const [client] = clientResult;
+      const transaction = new Transaction(clientId, value, description, type);
 
-      const newBalance = client.balance + value;
-
-      const transaction = new Transaction(
-        client.id,
-        client.balance,
-        description,
-        type
+      const [client, err] = await this.transactionRepository.credit(
+        transaction
       );
 
-      const err =
-        await this.transactionRepository.saveTransactionAndUpdateNewBalance(
-          transaction,
-          newBalance
-        );
+      if (!client) {
+        return [null, new Error("Limit exceeded")];
+      }
 
       if (err) {
         return [null, err];
       }
-      return [new Client(client.id, newBalance, client.limit), null];
+      return [new Client(clientId, client.balance, client.money_limit), null];
     } catch (e) {
       logger.error(e, "Error on credit usecase");
       return [null, e as Error];

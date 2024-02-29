@@ -13,21 +13,11 @@ export default class ExtractDbRepository implements ExtractRepository {
     const [connection, release] = await this.pool.connect();
     try {
       const result = await connection.query(
-        `SELECT 
-        c.balance, 
-        c.money_limit,
-        json_agg(
-            json_build_object(
-                'valor', t.amount,
-                'tipo', t.operation_type,
-                'descricao', t.description,
-                'realizada_em', t.created_at
-            ) ORDER BY t.created_at DESC
-        ) AS last_transactions
-        FROM clients c
-        LEFT JOIN transactions t ON t.client_id = c.id
-        WHERE c.id = $1
-        GROUP BY c.id, c.balance, c.money_limit
+        `
+        SELECT amount as valor, operation_type as tipo, description as descricao, created_at as realizada_em
+        FROM transactions
+        WHERE client_id = $1
+        ORDER BY created_at DESC
         LIMIT 10;
         `,
         [clientId]

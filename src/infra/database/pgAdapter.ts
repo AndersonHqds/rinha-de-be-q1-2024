@@ -1,6 +1,5 @@
 import Connection from "./connection";
 import pg from "pg";
-import { PoolMonitor } from "./poolMonitor";
 
 export default class PgAdapter implements Connection {
   pool: pg.Pool;
@@ -16,7 +15,7 @@ export default class PgAdapter implements Connection {
       max: 30,
       // idleTimeoutMillis: 0,
       connectionTimeoutMillis: 60_000,
-      // keepAlive: true,
+      keepAlive: true,
     });
     // this.poolMonitor = new PoolMonitor(this.pool);
   }
