@@ -1,26 +1,43 @@
 import ClientRepository from "../domain/client.repository";
-import ExtractRepository from "../domain/extract.repository";
+import TransactionRepository from "../domain/transaction.repository";
 
 export default class ExtractUsecase {
   constructor(
-    readonly extractRepository: ExtractRepository,
+    readonly transactionRepository: TransactionRepository,
     private readonly clientRepository: ClientRepository
   ) {
-    this.extractRepository = extractRepository;
+    this.transactionRepository = transactionRepository;
     this.clientRepository = clientRepository;
   }
-  async execute(clientId: number) {
-    const [client] = (await this.clientRepository.findById(clientId)) as any;
-    const [result, err] = await this.extractRepository.findByClientId(clientId);
+  async execute(clientId: number): Promise<any> {
+    const { result: client, error: clientError } =
+      await this.clientRepository.findById(clientId);
 
-    if (err || !result) {
+    if (!client || clientError) {
+      return {
+        result: null,
+        error: clientError ?? new Error("Error to get Client"),
+      };
+    }
+
+    const [{ result, error }, balanceResult] = await Promise.all([
+      this.transactionRepository.findByClientId(clientId),
+      this.clientRepository.getBalance(client),
+    ]);
+
+    if (error || !result) {
       return null;
     }
-    const { rows } = result;
     return {
-      balance: client.balance,
+      balance: balanceResult.balance,
       limit: client.limit,
-      last_transactions: rows || [],
+      last_transactions:
+        result.map((transaction) => ({
+          valor: transaction.value,
+          tipo: transaction.type,
+          descricao: transaction.description,
+          realizada_em: transaction?.createdAt,
+        })) || [],
     };
   }
 }

@@ -2,7 +2,7 @@ FROM node:20.11.0-slim
 
 WORKDIR /home/node/app
 
-COPY wait-for-it.sh package.json tsconfig.json global.d.ts package-lock.json ./
+COPY package.json tsconfig.json package-lock.json ./
 
 RUN npm install
 

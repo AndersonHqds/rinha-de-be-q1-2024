@@ -1,10 +1,8 @@
 export default interface Connection {
-  connect(): Promise<
-    [
-      {
-        query: (statement: string, params?: any) => Promise<any>;
-      },
-      close: () => void
-    ]
-  >;
+  connect(): Promise<{
+    connection: {
+      query: (statement: string, params?: any) => Promise<any>;
+    };
+    close: () => void;
+  }>;
 }

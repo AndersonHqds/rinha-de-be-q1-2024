@@ -1,8 +1,8 @@
 export default class Client {
   constructor(
     readonly id: number,
-    readonly balance: number,
-    readonly limit: number
+    readonly limit: number,
+    readonly balance?: number
   ) {
     this.id = id;
     this.balance = balance;

@@ -8,73 +8,93 @@ export default class TransactionDbRepository implements TransactionRepository {
     this.pool = pool;
   }
 
-  async credit(
-    transaction: Transaction
-  ): Promise<
-    [Nullable<{ balance: number; money_limit: number }>, Nullable<Error>]
-  > {
-    const [connection, release] = await this.pool.connect();
+  getOperationByTransactionType(transactionType: TransactionType) {
+    return transactionType === TransactionType.CREDIT ? "+" : "-";
+  }
+
+  async findByClientId(clientId: number) {
+    const { connection, close: release } = await this.pool.connect();
     try {
-      const {
-        rows: [client],
-      } = await connection.query(
-        ` 
-        WITH insert_transaction AS (
-          INSERT INTO transactions (client_id, amount, operation_type, description)
-          VALUES ($2, $1, 'c', $3)
-        )
-        UPDATE clients SET balance = balance + $1 WHERE id = $2 RETURNING balance, money_limit;
-    `,
-        [transaction.value, transaction.clientId, transaction.description]
+      const { rows } = await connection.query(
+        `
+        SELECT id, value, operation_type as type, description, created_at as "createdAt" 
+        FROM transactions
+        WHERE client_id = $1
+        ORDER BY created_at DESC
+        LIMIT 10
+        `,
+        [clientId]
       );
 
-      return [client, null];
+      return {
+        result: rows,
+        error: null,
+      };
     } catch (e) {
-      await connection.query("ROLLBACK;");
-      logger.error(e, "Error on credit operation");
-      return [null, e as Error];
+      logger.error(e, "Error on find extract by client id");
+      return {
+        result: null,
+        error: e as Error,
+      };
     } finally {
       release();
     }
   }
 
-  async debit(
-    transaction: Transaction
-  ): Promise<
-    [Nullable<{ balance: number; money_limit: number }>, Nullable<Error>]
-  > {
-    const [connection, release] = await this.pool.connect();
+  async performTransaction(transaction: Transaction, limit: number) {
+    const { connection, close: release } = await this.pool.connect();
+
     try {
+      await connection.query("BEGIN");
+      await connection.query("SELECT pg_advisory_xact_lock($1)", [
+        transaction.clientId,
+      ]);
+
+      if (transaction.type === TransactionType.DEBIT) {
+        const {
+          rows: [balance],
+        } = await connection.query(
+          `
+          SELECT value 
+          FROM balances
+          WHERE client_id = $1
+          LIMIT 1
+        `,
+          [transaction.clientId]
+        );
+        if (balance.value - transaction.value < -limit) {
+          await connection.query("ROLLBACK");
+          return { result: null, error: new Error("Limit Excedeed") };
+        }
+      }
+
       const {
-        rows: [client],
+        rows: [value],
       } = await connection.query(
         `
-        WITH valid_transaction AS (
-          SELECT id
-          FROM clients
-          WHERE id = $2 AND ABS(balance - $1) <= money_limit
-          FOR UPDATE
-        ),
-        update_balance AS (
-          UPDATE clients SET balance = balance - $1 
-          WHERE EXISTS (SELECT 1 FROM valid_transaction WHERE clients.id = valid_transaction.id)
-          RETURNING clients.id AS client_id, balance, money_limit
-        ),
-        insert_transaction AS (
-          INSERT INTO transactions (client_id, amount, operation_type, description) 
-          SELECT $2, $1, 'd', $3
-          FROM update_balance
-          RETURNING client_id
-        )
-        SELECT balance, money_limit FROM update_balance;
-      `,
-        [transaction.value, transaction.clientId, transaction.description]
+          UPDATE balances SET value = value ${this.getOperationByTransactionType(
+            transaction.type
+          )} $1 WHERE client_id = $2
+          RETURNING value
+        `,
+        [transaction.value, transaction.clientId]
       );
-      return [client, null];
+      await connection.query(
+        `INSERT INTO transactions (description, client_id, operation_type, value)
+        VALUES ($1, $2, $3, $4)`,
+        [
+          transaction.description,
+          transaction.clientId,
+          transaction.type,
+          transaction.value,
+        ]
+      );
+      await connection.query("COMMIT");
+      return { result: value, error: null };
     } catch (e) {
       await connection.query("ROLLBACK;");
-      logger.error(e, "Error on credit operation");
-      return [null, e as Error];
+      logger.error(e, "Error on transaction operation");
+      return { result: null, error: e as Error };
     } finally {
       release();
     }

@@ -18,3 +18,16 @@ export const transactionSchema = {
     required: ["id"],
   },
 };
+
+export const extractSchema = {
+  schema: {
+    params: {
+      type: "object",
+      properties: {
+        id: {
+          type: "integer",
+        },
+      },
+    },
+  },
+};

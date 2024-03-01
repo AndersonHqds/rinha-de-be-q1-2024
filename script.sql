@@ -1,32 +1,44 @@
-CREATE UNLOGGED TABLE clients ( 
-  id SERIAL PRIMARY KEY, 
-  money_limit INTEGER NOT NULL, 
-  balance INTEGER NOT NULL
+
+CREATE TABLE clients (
+  "id" SERIAL NOT NULL,
+  "limit" INTEGER NOT NULL,
+  CONSTRAINT "clients_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNLOGGED TABLE transactions (
-  id SERIAL PRIMARY KEY,
-  client_id INTEGER NOT NULL,
-  amount INTEGER NOT NULL,
-  operation_type CHAR(1) NOT NULL,
-  description TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/Sao_Paulo', now()),
+CREATE TABLE "balances" (
+  "id" SERIAL NOT NULL,
+  "client_id" INTEGER NOT NULL,
+  "value" INTEGER NOT NULL,
+  "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/Sao_Paulo', now()),
+  CONSTRAINT "balances_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "transactions" (
+  "id" SERIAL NOT NULL,
+  "value" INTEGER NOT NULL,
+  "client_id" INTEGER NOT NULL,
+  "operation_type" CHAR(1) NOT NULL,
+  "description" VARCHAR(10) NOT NULL,
+  "created_at" TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/Sao_Paulo', now()),
+  CONSTRAINT "transactions_pkey" PRIMARY KEY ("id"),
   FOREIGN KEY (client_id) REFERENCES clients (id)
 );
 
-CREATE INDEX idx_transactions_client_id ON transactions (client_id);
-CREATE INDEX idx_transactions_client_id_created_at ON transactions(client_id, created_at);
-CREATE INDEX idx_clients_balance ON clients(balance);
-CREATE INDEX idx_clients_money_limit ON clients(money_limit);
+CREATE UNIQUE INDEX "balances_client_id" ON "balances" ("client_id");
 
-DO $$
-BEGIN
-  INSERT INTO clients (money_limit, balance)
-  VALUES
-    (100000, 0),
-    (80000, 0),
-    (1000000, 0),
-    (10000000, 0),
-    (500000, 0);
-END; $$
+INSERT INTO
+  "clients" ("limit")
+VALUES
+  (100000),
+  (80000),
+  (1000000),
+  (10000000),
+  (500000);
 
+INSERT INTO
+  "balances" ("client_id", "value")
+SELECT
+  "id",
+  0
+FROM
+  "clients";

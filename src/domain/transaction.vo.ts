@@ -3,7 +3,8 @@ export default class Transaction {
     readonly clientId: number,
     readonly value: number,
     readonly description: string,
-    readonly type: TransactionType
+    readonly type: TransactionType,
+    readonly createdAt: Date = new Date()
   ) {
     this.value = value;
     this.description = description;
